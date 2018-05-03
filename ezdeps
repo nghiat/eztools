@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+##----------------------------------------------------------------------------##
+## ezdeps                                                                     ##
+##                                                                            ##
+## This file is distributed under the MIT License.                            ##
+## See LICENSE.txt for details.                                               ##
+## Copyright (C) Tran Tuan Nghia <trantuannghia95@gmail.com> 2018             ##
+##----------------------------------------------------------------------------##
+
+base_dir=$(dirname "$0")
+exec python3 "$base_dir/ezdeps.py" "$@"

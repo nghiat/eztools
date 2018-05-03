@@ -1,0 +1,4 @@
+CHECKSUMS
+__pycache__/
+*.exe
+*.tar.xz
