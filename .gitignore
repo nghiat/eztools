@@ -1,4 +1,5 @@
 CHECKSUMS
 __pycache__/
+_config.py
 *.exe
 *.tar.xz

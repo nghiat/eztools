@@ -6,12 +6,12 @@
 ## Copyright (C) Tran Tuan Nghia <trantuannghia95@gmail.com> 2018             ##
 ##----------------------------------------------------------------------------##
 
-from sys import platform
+import _config
 
 deps = []
 
 
-if platform == "linux":
+if _config.is_linux:
     deps.extend([
         {
             "file": "gn-linux.tar.xz",
@@ -24,7 +24,7 @@ if platform == "linux":
             "sha1": "625db5ca108e90525269c36cc73572f306fe5c1a"
         }
     ])
-elif platform == "win32":
+elif _config.is_win:
     deps.extend([
         {
             "file": "gn-win.tar.xz",
