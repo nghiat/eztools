@@ -52,7 +52,7 @@ if __name__ == "__main__":
         help="Target architecture (default to current architecture)")
     parser.add_argument(
         "action",
-        choices=["sync", "force-extract", "update", "clean"],
+        choices=["sync", "force-extract", "clean"],
         default="sync",
         nargs='?')
     args = parser.parse_args()

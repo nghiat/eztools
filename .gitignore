@@ -1,5 +1,6 @@
 CHECKSUMS
 __pycache__/
+.pytest_cache/
 _config.py
 *.exe
 *.tar.xz
