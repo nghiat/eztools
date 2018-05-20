@@ -8,7 +8,6 @@
 
 import hashlib
 import http.server
-import importlib
 import json
 import lzma
 import os

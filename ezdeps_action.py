@@ -173,8 +173,7 @@ def load_deps(relpath_to_toplevel, global_deps):
         Lists of deps of current DEPS.py and all links DEPS.py files.
     """
     deps_path = os.path.join(relpath_to_toplevel, "DEPS.py")
-    deps = importlib.machinery.SourceFileLoader(deps_path, deps_path).\
-           load_module()
+    deps = importlib.machinery.SourceFileLoader(deps_path, deps_path).load_module()
     if hasattr(deps, "links"):
         for link in deps.links:
             global_deps = load_deps(os.path.join(relpath_to_toplevel, link),

@@ -6,7 +6,7 @@
 ## Copyright (C) Tran Tuan Nghia <trantuannghia95@gmail.com> 2018             ##
 ##----------------------------------------------------------------------------##
 
-import imp
+import importlib.machinery
 import os
 import platform
 import sys
@@ -76,10 +76,11 @@ def create__config(commandline_values, skip_config):
     if variables_value["host_platform"] == "linux":
         variables_value["is_linux"] = True
     # Next, load variables from existing _config.py and override the old values
-    _config_loaded = False
+    _config = None
     if not skip_config and os.path.exists("_config.py"):
-        _config_loaded = True
-        _config = imp.load_source("_config", "_config.py")
+        _config = importlib.machinery.\
+                  SourceFileLoader("_config", "_config.py").\
+                  load_module()
         for key, value in _config.__dict__.items():
             if not key.startswith("__"):
                 if key in variables_name:
@@ -101,5 +102,5 @@ def create__config(commandline_values, skip_config):
                 writestr(f, key, value)
             if isinstance(value, bool):
                 writebool(f, key, value)
-    if _config_loaded:
-        imp.reload(_config)
+    if _config:
+        _config = importlib.reload(_config)
