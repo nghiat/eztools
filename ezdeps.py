@@ -56,10 +56,13 @@ if __name__ == "__main__":
         default="sync",
         nargs='?')
     args = parser.parse_args()
-    ezdeps_create__config.create__config({
-        "host_platform": args.host_platform,
-        "host_arch": args.host_arch,
-        "target_platform": args.target_platform,
-        "target_arch": args.target_arch
-    }, args.skip_config)
+    ezdeps_create__config.create__config(
+        ".",
+        {
+            "host_platform": args.host_platform,
+            "host_arch": args.host_arch,
+            "target_platform": args.target_platform,
+            "target_arch": args.target_arch
+        },
+        args.skip_config)
     ezdeps_action.run_action(args.action, args.dir)

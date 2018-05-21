@@ -8,25 +8,23 @@
 
 import hashlib
 import http.server
+import importlib
 import json
 import lzma
 import os
 import pytest
 import shutil
 import socketserver
+import sys
 import tarfile
 import threading
 
 import ezdeps_action
+from test_utils import path_from_script_dir
 
 
-here = os.path.dirname(os.path.relpath(__file__))
 port = 8000
 server_address = "http://127.0.0.1:{}/".format(port)
-
-
-def here_path(path):
-    return os.path.join(here, path).replace('\\', '/')
 
 
 def simple_sha1(path):
@@ -39,7 +37,7 @@ def simple_sha1(path):
 @pytest.fixture(scope="function")
 def file_and_hash():
     file_name = "file"
-    file_path = here_path(file_name)
+    file_path = path_from_script_dir(file_name)
     with open(file_path, "wb") as f:
         f.write("a".encode("utf-8"))
     yield file_name, file_path, simple_sha1(file_path)
@@ -51,7 +49,7 @@ def file_and_hash():
 def xz_file_and_hash(file_and_hash):
     file_name, file_path, hash = file_and_hash
     xz_name = file_name + ".tar.xz"
-    tar_path = here_path(file_name + ".tar")
+    tar_path = path_from_script_dir(file_name + ".tar")
     xz_path = tar_path + ".xz"
     with tarfile.open(tar_path, "w") as tar:
         tar.add(file_path, arcname=file_name)
@@ -77,12 +75,12 @@ def local_server():
 
 @pytest.fixture(scope="module")
 def non_existent_path():
-    return here_path("asdfghjkl")
+    return path_from_script_dir("asdfghjkl")
 
 
 @pytest.fixture(scope="function")
 def empty_folder():
-    folder = here_path("test_folder")
+    folder = path_from_script_dir("test_folder")
     os.makedirs(folder, exist_ok=True)
     yield folder
     shutil.rmtree(folder)
@@ -90,7 +88,7 @@ def empty_folder():
 
 @pytest.fixture(scope="function")
 def download_folder():
-    folder = here_path("download_folder")
+    folder = path_from_script_dir("download_folder")
     os.makedirs(folder)
     yield folder
     shutil.rmtree(folder)
@@ -98,11 +96,13 @@ def download_folder():
 
 @pytest.fixture(scope="function")
 def deps_files(file_and_hash, local_server, xz_file_and_hash):
+    importlib.invalidate_caches()
     file_name, file_path, file_hash = file_and_hash
     xz_name, xz_path, xz_hash = xz_file_and_hash
-    top_level_deps_path = here_path("DEPS.py")
+    top_level_deps_dir = path_from_script_dir("")
+    top_level_deps_path = path_from_script_dir("DEPS.py")
     file_download_name = "tmp_" + file_name
-    file_download_path = here_path(file_download_name)
+    file_download_path = path_from_script_dir(file_download_name)
     link_folder_name = "link"
     with open(top_level_deps_path, "w") as f:
         f.write(
@@ -118,7 +118,7 @@ links = [ "{3}" ]""".format(file_download_name,
                             server_address + file_path,
                             file_hash,
                             link_folder_name))
-    link_folder_path = here_path(link_folder_name)
+    link_folder_path = path_from_script_dir(link_folder_name)
     os.makedirs(link_folder_path, exist_ok=True)
     link_deps_file_path = os.path.join(link_folder_path, "DEPS.py")
     xz_download_name = "tmp_" + xz_name
@@ -133,7 +133,7 @@ deps = [
         "sha1": "{2}"
     }}
 ]""".format(xz_download_name, server_address + xz_path, xz_hash))
-    yield os.path.dirname(top_level_deps_path), \
+    yield top_level_deps_dir, \
         [
             {
                 "file": file_download_path,
@@ -151,7 +151,8 @@ deps = [
     if os.path.exists(xz_download_path):
         os.remove(xz_download_path)
     os.remove(top_level_deps_path)
-    downloaded_deps_file_path = here_path(ezdeps_action.downloaded_deps_file_name)
+    downloaded_deps_file_path = \
+        path_from_script_dir(ezdeps_action.downloaded_deps_file_name)
     if os.path.exists(downloaded_deps_file_path):
         os.remove(downloaded_deps_file_path)
     shutil.rmtree(link_folder_path)
@@ -162,7 +163,7 @@ def _ez_downloaded_deps_json(deps_files, file_and_hash):
     file_name, file_path, file_hash = file_and_hash
     top_deps_dir, downloaded_files = deps_files
     will_be_deleted_file_name = file_name + "_will_be_deleted"
-    will_be_deleted_file_path = here_path(will_be_deleted_file_name)
+    will_be_deleted_file_path = path_from_script_dir(will_be_deleted_file_name)
     will_be_deleted_file = {
         "file": will_be_deleted_file_path,
         "url": server_address + file_path

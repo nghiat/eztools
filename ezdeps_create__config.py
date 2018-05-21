@@ -6,10 +6,17 @@
 ## Copyright (C) Tran Tuan Nghia <trantuannghia95@gmail.com> 2018             ##
 ##----------------------------------------------------------------------------##
 
-import importlib.machinery
+import importlib
 import os
 import platform
 import sys
+
+
+import utils
+
+
+config_filename = "_config.py"
+config_module_name = "_config"
 
 
 def get_host_os():
@@ -50,8 +57,8 @@ variables_name = [
 ]
 
 
-def create__config(commandline_values, skip_config):
-    """Create _config.py file that have these following variables:
+def create__config(dir, commandline_values={}, skip_config=False):
+    """Create |config_filename| file in |dir| that have these following variables:
     - host_platform = str
     - host_arch = str
     - target_platform = str
@@ -60,8 +67,8 @@ def create__config(commandline_values, skip_config):
     - is_linux = bool
     Variables can can be set from multiple places, so the priorities are:
     default < existing value in file < command line
-    You can skip loading value from _config.py (force recreate _config.py)
-    by passing True to skip_config
+    You can skip loading value from |config_filename|
+    (force recreate |config_filename|) by passing True to skip_config
     """
     variables_value = {}
     # First, set variables to their default value
@@ -77,16 +84,16 @@ def create__config(commandline_values, skip_config):
         variables_value["is_linux"] = True
     # Next, load variables from existing _config.py and override the old values
     _config = None
-    if not skip_config and os.path.exists("_config.py"):
-        _config = importlib.machinery.\
-                  SourceFileLoader("_config", "_config.py").\
-                  load_module()
+    _config_path = os.path.join(dir, config_filename)
+    if not skip_config and os.path.exists(_config_path):
+        _config = utils.import_from_path(config_module_name, _config_path)
         for key, value in _config.__dict__.items():
             if not key.startswith("__"):
                 if key in variables_name:
                     variables_value[key] = value
                 else:
-                    print("Unrecognized variable in _config.py: " + key)
+                    print("Unrecognized variable in {0}: {1}"
+                          .format(config_filename, key))
                     exit(1)
     # Finally, use values from command line (if they are not empty)
     for key, value in commandline_values.items():
@@ -96,11 +103,9 @@ def create__config(commandline_values, skip_config):
         if value:
             variables_value[key] = value
     # Export to _config.py
-    with open("_config.py", "w") as f:
+    with open(_config_path, "w") as f:
         for key, value in variables_value.items():
             if isinstance(value, str):
                 writestr(f, key, value)
             if isinstance(value, bool):
                 writebool(f, key, value)
-    if _config:
-        _config = importlib.reload(_config)

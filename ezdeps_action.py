@@ -7,7 +7,6 @@
 ##----------------------------------------------------------------------------##
 
 import hashlib
-import importlib.machinery
 import json
 import lzma
 import os
@@ -15,6 +14,9 @@ import shutil
 import tarfile
 import urllib.error
 import urllib.request
+
+
+import utils
 
 
 downloaded_deps_file_name = "_ezdeps_downloaded_deps.json"
@@ -37,7 +39,7 @@ def verify_sha1(path, checksum):
 def download_file(url, save_path):
     """Downloads file from url then saves to save_path.
     Returns True if succeeded"""
-    folder = os.path.dirname(save_path)
+    folder = os.path.dirname(os.path.abspath(save_path))
     os.makedirs(folder, exist_ok=True)
     try:
         res = urllib.request.urlopen(url)
@@ -159,7 +161,7 @@ def clean(dep):
 
 def load_deps(relpath_to_toplevel, global_deps):
     """Run DEPS.py file in \relpath_to_toplevel.
-    Each DEPS.py is a normal python script but there are some important variables:
+    Each DEPS.py is a python script but there are some important variables:
     - links: path to relative directories to the current DEPS.py file directory
              that contains other DEPS.py files.
     - deps: list of dependencies which are objects like this
@@ -173,7 +175,7 @@ def load_deps(relpath_to_toplevel, global_deps):
         Lists of deps of current DEPS.py and all links DEPS.py files.
     """
     deps_path = os.path.join(relpath_to_toplevel, "DEPS.py")
-    deps = importlib.machinery.SourceFileLoader(deps_path, deps_path).load_module()
+    deps = utils.import_from_path(deps_path, deps_path)
     if hasattr(deps, "links"):
         for link in deps.links:
             global_deps = load_deps(os.path.join(relpath_to_toplevel, link),
