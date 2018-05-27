@@ -109,3 +109,4 @@ def create__config(dir, commandline_values={}, skip_config=False):
                 writestr(f, key, value)
             if isinstance(value, bool):
                 writebool(f, key, value)
+    importlib.invalidate_caches()

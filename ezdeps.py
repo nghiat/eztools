@@ -11,11 +11,9 @@ import ezdeps_create__config
 
 import argparse
 import os
-import sys
 
 
 if __name__ == "__main__":
-    sys.path.append(os.getcwd())
     parser = argparse.ArgumentParser(description="Binaries management tool.")
     parser.add_argument(
         "-d",
