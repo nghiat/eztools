@@ -15,25 +15,25 @@ if _config.is_linux:
     deps.extend([
         {
             "file": "gn-linux.tar.xz",
-            "url": "https://media.githubusercontent.com/media/nghiat/binaries/b150635b2bd8842cef2264cf80e0deabc0eaffef/gn/gn-linux-0.3.2.tar.xz",
+            "url": "https://github.com/nghiat/binaries/raw/master/gn/gn-linux-0.3.2.tar.xz",
             "sha1": "d4b266fb261bba839aba26b77dbd7c93eaf9097a"
         },
         {
             "file": "ninja-linux.tar.xz",
-            "url": "https://media.githubusercontent.com/media/nghiat/binaries/87e4682295c06596a435b0064bd46f0634127189/ninja-build/ninja-linux-1.8.2.tar.xz",
-            "sha1": "625db5ca108e90525269c36cc73572f306fe5c1a"
+            "url": "https://github.com/nghiat/binaries/raw/master/ninja-build/ninja-linux-1.8.2.tar.xz",
+            "sha1": "498d500a9a749f21a74670933a2cc9847df30526"
         }
     ])
 elif _config.is_win:
     deps.extend([
         {
             "file": "gn-win.tar.xz",
-            "url": "https://media.githubusercontent.com/media/nghiat/binaries/b150635b2bd8842cef2264cf80e0deabc0eaffef/gn/gn-win-0.3.2.tar.xz",
+            "url": "https://github.com/nghiat/binaries/raw/master/gn/gn-win-0.3.2.tar.xz",
             "sha1": "922f21278f2bd2ea31a89eea75fc3c4aab759d64"
         },
         {
             "file": "ninja-win.tar.xz",
-            "url": "https://media.githubusercontent.com/media/nghiat/binaries/87e4682295c06596a435b0064bd46f0634127189/ninja-build/ninja-win-1.8.2.tar.xz",
-            "sha1": "43f2911aab6b1abb627d06225dfd1f25bc1b8313"
+            "url": "https://github.com/nghiat/binaries/raw/master/ninja-build/ninja-win-1.8.2.tar.xz",
+            "sha1": "493bd091b28c9997223eb6b0a032e295dcdebda1"
         }
     ])
