@@ -14,14 +14,14 @@ import pytest
 from ezdeps_create__config import create__config,\
     config_filename,\
     config_module_name
-from test_utils import path_from_script_dir
+from test_utils import path_from_cwd
 import utils
 
 
 @pytest.fixture(scope="function")
 def _config():
-    _config_dir = path_from_script_dir(".")
-    _config_path = path_from_script_dir(config_filename)
+    _config_dir = path_from_cwd(".")
+    _config_path = path_from_cwd(config_filename)
     if os.path.isfile(_config_path):
         os.remove(_config_path)
     yield _config_dir, _config_path

@@ -1,6 +1,7 @@
-CHECKSUMS
 __pycache__/
 .pytest_cache/
+.tmp
+.vscode
 _config.py
 *.exe
 *.tar.xz

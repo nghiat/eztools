@@ -9,18 +9,16 @@
 import hashlib
 import http.server
 import importlib
-import json
 import lzma
 import os
 import pytest
 import shutil
 import socketserver
-import sys
 import tarfile
 import threading
 
 import ezdeps_action
-from test_utils import path_from_script_dir
+from test_utils import path_from_cwd
 
 
 port = 8000
@@ -37,7 +35,7 @@ def simple_sha1(path):
 @pytest.fixture(scope="function")
 def file_and_hash():
     file_name = "file"
-    file_path = path_from_script_dir(file_name)
+    file_path = path_from_cwd(file_name)
     with open(file_path, "wb") as f:
         f.write("a".encode("utf-8"))
     yield file_name, file_path, simple_sha1(file_path)
@@ -49,7 +47,7 @@ def file_and_hash():
 def xz_file_and_hash(file_and_hash):
     file_name, file_path, hash = file_and_hash
     xz_name = file_name + ".tar.xz"
-    tar_path = path_from_script_dir(file_name + ".tar")
+    tar_path = path_from_cwd(file_name + ".tar")
     xz_path = tar_path + ".xz"
     with tarfile.open(tar_path, "w") as tar:
         tar.add(file_path, arcname=file_name)
@@ -75,12 +73,12 @@ def local_server():
 
 @pytest.fixture(scope="module")
 def non_existent_path():
-    return path_from_script_dir("asdfghjkl")
+    return path_from_cwd("asdfghjkl")
 
 
 @pytest.fixture(scope="function")
 def empty_folder():
-    folder = path_from_script_dir("test_folder")
+    folder = path_from_cwd("test_folder")
     os.makedirs(folder, exist_ok=True)
     yield folder
     shutil.rmtree(folder)
@@ -88,7 +86,7 @@ def empty_folder():
 
 @pytest.fixture(scope="function")
 def download_folder():
-    folder = path_from_script_dir("download_folder")
+    folder = path_from_cwd("download_folder")
     os.makedirs(folder)
     yield folder
     shutil.rmtree(folder)
@@ -99,49 +97,61 @@ def deps_files(file_and_hash, local_server, xz_file_and_hash):
     importlib.invalidate_caches()
     file_name, file_path, file_hash = file_and_hash
     xz_name, xz_path, xz_hash = xz_file_and_hash
-    top_level_deps_dir = path_from_script_dir("")
-    top_level_deps_path = path_from_script_dir("DEPS.py")
+    top_level_deps_dir = path_from_cwd("")
+    top_level_deps_path = path_from_cwd("DEPS.py")
     file_download_name = "tmp_" + file_name
-    file_download_path = path_from_script_dir(file_download_name)
+    file_folder_in_deps = "."
+    file_download_folder = path_from_cwd(file_folder_in_deps)
+    file_download_path = ezdeps_action.get_download_path(
+        file_download_folder, file_download_name)
     link_folder_name = "link"
     with open(top_level_deps_path, "w") as f:
         f.write(
             """
 deps = [
     {{
-        "file": "{0}",
-        "url": "{1}",
-        "sha1": "{2}"
+        "file_name": "{0}",
+        "folder": "{1}",
+        "url": "{2}",
+        "sha1": "{3}"
     }}
 ]
-links = [ "{3}" ]""".format(file_download_name,
+links = [ "{4}" ]""".format(file_download_name,
+                            file_folder_in_deps,
                             server_address + file_path,
                             file_hash,
                             link_folder_name))
-    link_folder_path = path_from_script_dir(link_folder_name)
+    link_folder_path = path_from_cwd(link_folder_name)
     os.makedirs(link_folder_path, exist_ok=True)
     link_deps_file_path = os.path.join(link_folder_path, "DEPS.py")
     xz_download_name = "tmp_" + xz_name
-    xz_download_path = os.path.join(link_folder_path, xz_download_name)
+    xz_download_folder_in_deps = "."
+    xz_download_folder = link_folder_path
+    xz_download_path = ezdeps_action.get_download_path(
+        xz_download_folder, xz_download_name)
     with open(link_deps_file_path, "w") as f:
-        f.write(
-            """
+        f.write("""
 deps = [
     {{
-        "file": "{0}",
-        "url": "{1}",
-        "sha1": "{2}"
+        "file_name": "{0}",
+        "folder": "{1}",
+        "url": "{2}",
+        "sha1": "{3}"
     }}
-]""".format(xz_download_name, server_address + xz_path, xz_hash))
+]""".format(xz_download_name, xz_download_folder_in_deps,
+            server_address + xz_path, xz_hash))
+    # yeilds the actual folder instead of folder relative to DEPS.py file
     yield top_level_deps_dir, \
         [
             {
-                "file": file_download_path,
+                "file_name": file_download_name,
+                "folder": file_download_folder,
                 "url": server_address + file_path,
                 "sha1": file_hash
             },
             {
-                "file": xz_download_path,
+                "file_name": xz_download_name,
+                "folder": xz_download_folder,
                 "url": server_address + xz_path,
                 "sha1": xz_hash
             },
@@ -151,33 +161,7 @@ deps = [
     if os.path.exists(xz_download_path):
         os.remove(xz_download_path)
     os.remove(top_level_deps_path)
-    downloaded_deps_file_path = \
-        path_from_script_dir(ezdeps_action.downloaded_deps_file_name)
-    if os.path.exists(downloaded_deps_file_path):
-        os.remove(downloaded_deps_file_path)
     shutil.rmtree(link_folder_path)
-
-
-@pytest.fixture(scope="function")
-def _ez_downloaded_deps_json(deps_files, file_and_hash):
-    file_name, file_path, file_hash = file_and_hash
-    top_deps_dir, downloaded_files = deps_files
-    will_be_deleted_file_name = file_name + "_will_be_deleted"
-    will_be_deleted_file_path = path_from_script_dir(will_be_deleted_file_name)
-    will_be_deleted_file = {
-        "file": will_be_deleted_file_path,
-        "url": server_address + file_path
-    }
-    exported_files = downloaded_files[:]
-    exported_files.append(will_be_deleted_file)
-    json_path = os.path.join(top_deps_dir,
-                             ezdeps_action.downloaded_deps_file_name)
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump({"deps": exported_files}, f, ensure_ascii=False, indent=4)
-    yield will_be_deleted_file
-    if os.path.exists(will_be_deleted_file_path):
-        os.remove(will_be_deleted_file_path)
-    os.remove(json_path)
 
 
 def test_calculate_hash_from_path(empty_folder,
@@ -245,20 +229,23 @@ def test_get_dep(empty_folder, file_and_hash, local_server, xz_file_and_hash):
     file_name, file_path, file_hash = file_and_hash
     xz_name, xz_path, xz_hash = xz_file_and_hash
     download_file_address = server_address + xz_path
-    save_path = os.path.join(empty_folder, xz_name)
+    download_path = ezdeps_action.get_download_path(empty_folder, xz_name)
     extracted_file = os.path.join(empty_folder, file_name)
     # invalid address
-    assert not ezdeps_action.get_dep({"file": save_path,
+    assert not ezdeps_action.get_dep({"file_name": xz_name,
+                                      "folder": empty_folder,
                                       "url": "http://abc",
                                       "sha1": xz_hash})
     # wrong hash
-    assert not ezdeps_action.get_dep({"file": save_path,
+    assert not ezdeps_action.get_dep({"file_name": xz_name,
+                                      "folder": empty_folder,
                                       "url": download_file_address,
                                       "sha1": ""})
-    assert os.path.isfile(save_path)
-    os.remove(save_path)
+    assert os.path.isfile(download_path)
+    os.remove(download_path)
     # correct hash
-    assert ezdeps_action.get_dep({"file": save_path,
+    assert ezdeps_action.get_dep({"file_name": xz_name,
+                                  "folder": empty_folder,
                                   "url": download_file_address,
                                   "sha1": xz_hash})
     assert os.path.isfile(extracted_file)
@@ -266,17 +253,12 @@ def test_get_dep(empty_folder, file_and_hash, local_server, xz_file_and_hash):
     with open(extracted_file, "w") as f:
         f.write("")
     new_hash = ezdeps_action.calculate_sha1(extracted_file)
-    assert ezdeps_action.get_dep({"file": save_path,
+    assert(new_hash != file_hash)
+    assert ezdeps_action.get_dep({"file_name": xz_name,
+                                  "folder": empty_folder,
                                   "url": download_file_address,
                                   "sha1": xz_hash})
-    # Check the file is not overwritten.
-    assert ezdeps_action.verify_sha1(extracted_file, new_hash)
-    # Force extract
-    assert ezdeps_action.get_dep({"file": save_path,
-                                  "url": download_file_address,
-                                  "sha1": xz_hash},
-                                 True)
-    # Check the file is overwritten.
+    # Check the new file is overwritten.
     assert ezdeps_action.verify_sha1(extracted_file, file_hash)
 
 
@@ -284,50 +266,58 @@ def test_clean(empty_folder, file_and_hash, local_server, xz_file_and_hash):
     file_name, file_path, file_hash = file_and_hash
     xz_name, xz_path, xz_hash = xz_file_and_hash
     download_file_address = server_address + xz_path
-    save_path = os.path.join(empty_folder, xz_name)
+    download_path = ezdeps_action.get_download_path(empty_folder, xz_name)
     extracted_file = os.path.join(empty_folder, file_name)
-    ezdeps_action.get_dep({"file": save_path,
+    ezdeps_action.get_dep({"file_name": xz_name,
+                           "folder": empty_folder,
                            "url": download_file_address,
                            "sha1": xz_hash})
-    assert os.path.isfile(save_path)
+    assert os.path.isfile(download_path)
     assert os.path.isfile(extracted_file)
-    ezdeps_action.clean({"file": save_path})
-    assert not os.path.isfile(save_path)
+    ezdeps_action.clean({"file_name": xz_name, "folder": empty_folder})
+    assert not os.path.isfile(download_path)
     assert not os.path.isfile(extracted_file)
 
 
 def test_sync_action(deps_files):
-    top_deps_dir, downloaded_files = deps_files
+    top_level_deps_dir, downloaded_files = deps_files
     # sync
-    ezdeps_action.run_action("sync", top_deps_dir)
+    ezdeps_action.run_action("sync", top_level_deps_dir)
     for file in downloaded_files:
-        assert ezdeps_action.verify_sha1(file["file"], file["sha1"])
+        download_path = ezdeps_action.get_download_path(
+            file["folder"], file["file_name"])
+        assert ezdeps_action.verify_sha1(download_path, file["sha1"])
 
 
-def test_clean_unused_files(_ez_downloaded_deps_json, deps_files):
-    top_deps_dir, downloaded_files = deps_files
-    will_be_deleted_file = _ez_downloaded_deps_json
+def test_re_extract(deps_files):
+    top_level_deps_dir, downloaded_files = deps_files
+    ezdeps_action.run_action("sync", top_level_deps_dir)
     for file in downloaded_files:
-        ezdeps_action.download_file(file["url"], file["file"])
-    ezdeps_action.download_file(will_be_deleted_file["url"],
-                                will_be_deleted_file["file"])
-    ezdeps_action.run_action("sync", top_deps_dir)
-    assert not os.path.exists(will_be_deleted_file["file"])
-
-
-def test_force_extract(deps_files):
-    top_deps_dir, downloaded_files = deps_files
-    ezdeps_action.run_action("sync", top_deps_dir)
+        file_name = file["file_name"]
+        folder = file["folder"]
+        if ezdeps_action.has_archive_name(file_name):
+            download_path = ezdeps_action.get_download_path(folder, file_name)
+            ezdeps_action.delete_extracted_files(download_path, folder)
+    ezdeps_action.run_action("sync", top_level_deps_dir)
     for file in downloaded_files:
-        if ezdeps_action.has_archive_name(file["file"]):
-            ezdeps_action.delete_extracted_files(file["file"],
-                                                 os.path.dirname(file["file"]))
-    ezdeps_action.run_action("force-extract", top_deps_dir)
-    for file in downloaded_files:
-        if ezdeps_action.has_archive_name(file["file"]):
-            archive_dir = os.path.dirname(file["file"])
-            with lzma.open(file["file"]) as f:
+        file_name = file["file_name"]
+        folder = file["folder"]
+        if ezdeps_action.has_archive_name(file_name):
+            download_path = ezdeps_action.get_download_path(folder, file_name)
+            with lzma.open(download_path) as f:
                 with tarfile.open(fileobj=f) as tar:
                     for file_in_archive in tar.getnames():
-                        assert os.path.exists(os.path.join(archive_dir,
+                        assert os.path.exists(os.path.join(folder,
                                                            file_in_archive))
+
+
+def test_archive_download_location(empty_folder, local_server,
+                                   xz_file_and_hash):
+    xz_name, xz_path, xz_hash = xz_file_and_hash
+    ezdeps_action.get_dep({"file_name": xz_name,
+                           "folder": empty_folder,
+                           "url": server_address + xz_path,
+                           "sha1": xz_hash})
+    download_path = os.path.join(ezdeps_action.tmp_folder_name, xz_name)
+    assert os.path.exists(download_path)
+    os.remove(download_path)

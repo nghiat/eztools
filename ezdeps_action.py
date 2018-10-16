@@ -19,7 +19,14 @@ import urllib.request
 import utils
 
 
-downloaded_deps_file_name = "_ezdeps_downloaded_deps.json"
+tmp_folder_name = ".tmp"
+
+
+def get_download_path(folder, file_name):
+    file_path = os.path.join(folder, file_name)
+    if has_archive_name(file_name):
+        file_path = os.path.join(tmp_folder_name, file_name)
+    return file_path
 
 
 def calculate_sha1(path):
@@ -98,48 +105,45 @@ def has_archive_name(path):
     return False
 
 
-def get_dep(dep, force_extract=False):
-    """If file exists and is sha1 is matched:
-       - If force_extract is True, reextract the file if file is an archive.
-       - Do nothing otherwise.
-       Otherwise, delete and try to download file from url.
+def get_dep(dep):
+    """If the file is not an archive, exists and the hash matches, then do nothing.
+    If the file is an archive, exists in |tmp_dir|, and the hash matches, then re-extract the file.
+    Otherwise, re-download the file and extract it if it is an archive.
     Returns True if there is no error, False otherwise.
     """
-    file = dep["file"]
+    file_name = dep["file_name"]
+    folder = dep["folder"]
     url = dep["url"]
     sha1 = dep["sha1"]
-    file_folder = os.path.dirname(file)
-    if os.path.exists(file):
-        if verify_sha1(file, sha1):
-            if force_extract and has_archive_name(file):
-                if extract_tar_xz(file, file_folder):
-                    print('Done force extracting "{}"'.format(file))
-                else:
+    is_archive = has_archive_name(file_name)
+    download_path = get_download_path(folder, file_name)
+    if os.path.exists(download_path):
+        if verify_sha1(download_path, sha1):
+            if is_archive:
+                if not extract_tar_xz(download_path, folder):
                     print('Cannot extract "{}" even when sha1 is matched'
-                          .format(file))
+                          .format(file_name))
                     return False
-            print('Processed "{}" successfully'.format(file))
             return True
         else:
-            print('File "{}" sha1 is not matched'.format(file))
-            if has_archive_name(file):
-                delete_extracted_files(file, file_folder)
-            print('Deleting "{}"'.format(file))
-            os.remove(file)
-            print('Redownloading "{}"'.format(file))
+            print('File "{}" sha1 is not matched'.format(file_name))
+            if is_archive:
+                delete_extracted_files(download_path, folder)
+            os.remove(download_path)
+            print('Re-downloading "{}"'.format(file_name))
     else:
-        print('Downloading "{}"'.format(file))
-    if not download_file(url, file):
+        print('Downloading "{}"'.format(file_name))
+    if not download_file(url, download_path):
         return False
-    print('Downloaded "{}"'.format(file))
-    if not verify_sha1(file, sha1):
+    print('Downloaded "{}"'.format(file_name))
+    if not verify_sha1(download_path, sha1):
         print('Failed to verify sha1 of "{}" even after downloading'
-              .format(file))
+              .format(file_name))
         return False
-    if has_archive_name(file) and not extract_tar_xz(file, file_folder):
-        print('Cannot extract "{}" even after downloading'.format(file))
+    if is_archive and not extract_tar_xz(download_path, folder):
+        print('Cannot extract "{}" even after downloading'.format(file_name))
         return False
-    print('Processed "{}" successfully'.format(file))
+    print('Processed "{}" successfully'.format(file_name))
     return True
 
 
@@ -149,14 +153,19 @@ def clean(dep):
     Args:
         file (str): path to file you want to delete
     """
-    file = dep["file"]
-    print('Cleaning "{}"'.format(file))
-    file_folder = os.path.dirname(file)
-    if os.path.exists(file):
-        if has_archive_name(file):
-            delete_extracted_files(file, file_folder)
-        print('Deleting "{}"'.format(file))
-        os.remove(file)
+    file_name = dep["file_name"]
+    folder = dep["folder"]
+    is_archive = has_archive_name(file_name)
+    download_path = get_download_path(folder, file_name)
+    message = 'Deleting "{}"'
+    if is_archive:
+        message = 'Deleting "{}" and its contents'
+    print(message.format(file_name))
+    if os.path.exists(download_path):
+        if is_archive:
+            delete_extracted_files(download_path, folder)
+    os.remove(download_path)
+    print('Deleted "{}"'.format(file_name))
 
 
 def load_deps(relpath_to_toplevel, global_deps):
@@ -166,7 +175,8 @@ def load_deps(relpath_to_toplevel, global_deps):
              that contains other DEPS.py files.
     - deps: list of dependencies which are objects like this
             {
-                "file": "save file name in same directory as DEPS.py",
+                "file_name": "file_name",
+                "folder": "save or extract location which is relative to DEPS.py",
                 "url": "download url",
                 "sha1": "sha1 of the file",
             }
@@ -182,51 +192,15 @@ def load_deps(relpath_to_toplevel, global_deps):
                                     global_deps)
     if hasattr(deps, "deps"):
         for dep in deps.deps:
-            dep["file"] = os.path.join(relpath_to_toplevel, dep["file"])
+            dep["folder"] = os.path.join(relpath_to_toplevel, dep["folder"])
             dep["deps_file"] = os.path.join(relpath_to_toplevel, "DEPS.py")
         global_deps.extend(deps.deps)
     return global_deps
 
 
-def clean_unused_files(deps, dir):
-    """Delete files that were in DEPS.py files but not anymore."""
-    downloaded_deps_file_path = os.path.join(dir, downloaded_deps_file_name)
-    downloaded_deps = []
-    if os.path.exists(downloaded_deps_file_path):
-        with open(downloaded_deps_file_path, encoding="utf-8") as f:
-            downloaded_deps_obj = json.load(f)
-        if "deps" in downloaded_deps_obj:
-            downloaded_deps = downloaded_deps_obj["deps"]
-    for downloaded_dep in downloaded_deps:
-        downloaded_file_path = downloaded_dep["file"]
-        if os.path.exists(downloaded_file_path):
-            need_deleting = True
-            for dep in deps:
-                if dep["file"] == downloaded_file_path:
-                    need_deleting = False
-                    break
-            if need_deleting:
-                if has_archive_name(downloaded_file_path):
-                    delete_extracted_files(downloaded_file_path,
-                                           os.path.dirname(downloaded_file_path))
-                print('Deleting "{}" that is not in any DEPS.py anymore'.
-                      format(downloaded_file_path))
-                os.remove(downloaded_file_path)
-
-
-def action_get_deps(deps, dir, force_extract):
-    successfull_deps = []
+def action_get_deps(deps):
     for dep in deps:
-        if get_dep(dep, force_extract):
-            successfull_deps.append(dep)
-    if len(successfull_deps):
-        with open(os.path.join(dir, downloaded_deps_file_name),
-                  "w",
-                  encoding="utf-8") as f:
-            json.dump({"deps": successfull_deps},
-                      f,
-                      ensure_ascii=False,
-                      indent=4)
+        get_dep(dep)
 
 
 def action_clean(deps):
@@ -236,11 +210,8 @@ def action_clean(deps):
 
 def run_action(action, dir):
     deps = load_deps(dir, [])
-    clean_unused_files(deps, dir)
     # Choose function depends on action once and for all.
     if action == "sync":
-        action_get_deps(deps, dir, False)
-    elif action == "force-extract":
-        action_get_deps(deps, dir, True)
+        action_get_deps(deps)
     elif action == "clean":
         action_clean(deps)

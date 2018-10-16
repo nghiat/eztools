@@ -9,7 +9,7 @@
 import os
 
 
-def path_from_script_dir(path):
-    """Join |path| to current working directory path"""
-    here = os.path.dirname(os.path.relpath(__file__))
-    return os.path.join(here, path).replace('\\', '/')
+def path_from_cwd(path):
+    """Join path from cwd to script directory and |path|"""
+    cwd_to_script = os.path.dirname(os.path.relpath(__file__))
+    return os.path.join(cwd_to_script, path).replace('\\', '/')

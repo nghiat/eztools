@@ -10,7 +10,6 @@ import ezdeps_action
 import ezdeps_create__config
 
 import argparse
-import os
 
 
 if __name__ == "__main__":
@@ -53,7 +52,7 @@ if __name__ == "__main__":
         help="Target architecture (default to current architecture)")
     parser.add_argument(
         "action",
-        choices=["sync", "force-extract", "clean"],
+        choices=["sync", "clean"],
         default="sync",
         nargs='?')
     args = parser.parse_args()
