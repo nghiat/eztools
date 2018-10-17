@@ -7,4 +7,4 @@
 ::----------------------------------------------------------------------------::
 @echo off
 
-py -3 -m eztools.ezdeps.ezdeps %*
+py -3 "%~dp0\eztools.py" --tool=ezdeps %*

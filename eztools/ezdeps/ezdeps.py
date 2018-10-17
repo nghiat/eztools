@@ -11,7 +11,8 @@ import argparse
 from eztools.ezdeps.action import run_action
 from eztools.ezdeps.create__config import create__config
 
-if __name__ == "__main__":
+
+def ezdeps(args):
     parser = argparse.ArgumentParser(description="Binaries management tool.")
     parser.add_argument(
         "-d",
@@ -51,12 +52,12 @@ if __name__ == "__main__":
         help="Target architecture (default to current architecture)")
     parser.add_argument(
         "action", choices=["sync", "clean"], default="sync", nargs='?')
-    args = parser.parse_args()
+    parsed_args = parser.parse_args(args)
     create__config(
         ".", {
-            "host_platform": args.host_platform,
-            "host_arch": args.host_arch,
-            "target_platform": args.target_platform,
-            "target_arch": args.target_arch
-        }, args.skip_config)
-    run_action(args.action, args.dir)
+            "host_platform": parsed_args.host_platform,
+            "host_arch": parsed_args.host_arch,
+            "target_platform": parsed_args.target_platform,
+            "target_arch": parsed_args.target_arch
+        }, parsed_args.skip_config)
+    run_action(parsed_args.action, parsed_args.dir)
