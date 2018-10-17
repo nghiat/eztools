@@ -185,8 +185,8 @@ def load_deps(relpath_to_toplevel, global_deps):
     deps = import_from_path(deps_path, deps_path)
     if hasattr(deps, "links"):
         for link in deps.links:
-            global_deps = load_deps(os.path.join(relpath_to_toplevel, link),
-                                    global_deps)
+            global_deps = load_deps(
+                os.path.join(relpath_to_toplevel, link), global_deps)
     if hasattr(deps, "deps"):
         for dep in deps.deps:
             dep["folder"] = os.path.join(relpath_to_toplevel, dep["folder"])

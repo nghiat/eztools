@@ -19,7 +19,6 @@ import threading
 
 import eztools.ezdeps.action as action
 
-
 port = 8000
 server_address = "http://127.0.0.1:{}/".format(port)
 
@@ -101,12 +100,11 @@ def deps_files(file_and_hash, local_server, xz_file_and_hash):
     file_download_name = "tmp_" + file_name
     file_folder_in_deps = "."
     file_download_folder = file_folder_in_deps
-    file_download_path = action.get_download_path(
-        file_download_folder, file_download_name)
+    file_download_path = action.get_download_path(file_download_folder,
+                                                  file_download_name)
     link_folder_name = "link"
     with open(top_level_deps_path, "w") as f:
-        f.write(
-            """
+        f.write("""
 deps = [
     {{
         "file_name": "{0}",
@@ -115,10 +113,8 @@ deps = [
         "sha1": "{3}"
     }}
 ]
-links = [ "{4}" ]""".format(file_download_name,
-                            file_folder_in_deps,
-                            server_address + file_path,
-                            file_hash,
+links = [ "{4}" ]""".format(file_download_name, file_folder_in_deps,
+                            server_address + file_path, file_hash,
                             link_folder_name))
     link_folder_path = link_folder_name
     os.makedirs(link_folder_path, exist_ok=True)
@@ -126,8 +122,8 @@ links = [ "{4}" ]""".format(file_download_name,
     xz_download_name = "tmp_" + xz_name
     xz_download_folder_in_deps = "."
     xz_download_folder = link_folder_path
-    xz_download_path = action.get_download_path(
-        xz_download_folder, xz_download_name)
+    xz_download_path = action.get_download_path(xz_download_folder,
+                                                xz_download_name)
     with open(link_deps_file_path, "w") as f:
         f.write("""
 deps = [
@@ -163,8 +159,7 @@ deps = [
     shutil.rmtree(link_folder_path)
 
 
-def test_calculate_hash_from_path(empty_folder,
-                                  file_and_hash,
+def test_calculate_hash_from_path(empty_folder, file_and_hash,
                                   non_existent_path):
     file_name, file_path, file_hash = file_and_hash
     assert action.calculate_sha1(file_path) == file_hash
@@ -179,9 +174,7 @@ def test_verify_sha1(empty_folder, file_and_hash, non_existent_path):
     assert action.verify_sha1(empty_folder, "")
 
 
-def test_download_file(download_folder,
-                       local_server,
-                       non_existent_path,
+def test_download_file(download_folder, local_server, non_existent_path,
                        xz_file_and_hash):
     save_path = os.path.join(download_folder, "downloaded_file")
     xz_name, xz_path, xz_hash = xz_file_and_hash
@@ -194,9 +187,7 @@ def test_download_file(download_folder,
     assert not action.download_file("http:/abc", save_path)
 
 
-def test_extract_tar_xz(empty_folder,
-                        file_and_hash,
-                        non_existent_path,
+def test_extract_tar_xz(empty_folder, file_and_hash, non_existent_path,
                         xz_file_and_hash):
     file_name, file_path, file_hash = file_and_hash
     xz_name, xz_path, xz_hash = xz_file_and_hash
@@ -257,7 +248,7 @@ def test_get_dep(empty_folder, file_and_hash, local_server, xz_file_and_hash):
     with open(extracted_file, "w") as f:
         f.write("")
     new_hash = action.calculate_sha1(extracted_file)
-    assert(new_hash != file_hash)
+    assert (new_hash != file_hash)
     assert action.get_dep({
         "file_name": xz_name,
         "folder": empty_folder,
@@ -292,8 +283,8 @@ def test_sync_action(deps_files):
     # sync
     action.run_action("sync", top_level_deps_dir)
     for file in downloaded_files:
-        download_path = action.get_download_path(
-            file["folder"], file["file_name"])
+        download_path = action.get_download_path(file["folder"],
+                                                 file["file_name"])
         assert action.verify_sha1(download_path, file["sha1"])
 
 
@@ -315,8 +306,8 @@ def test_re_extract(deps_files):
             with lzma.open(download_path) as f:
                 with tarfile.open(fileobj=f) as tar:
                     for file_in_archive in tar.getnames():
-                        assert os.path.exists(os.path.join(folder,
-                                                           file_in_archive))
+                        assert os.path.exists(
+                            os.path.join(folder, file_in_archive))
 
 
 def test_archive_download_location(empty_folder, local_server,

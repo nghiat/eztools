@@ -90,8 +90,8 @@ def create__config(dir, commandline_values={}, skip_config=False):
                 if key in variables_name:
                     variables_value[key] = value
                 else:
-                    print("Unrecognized variable in {0}: {1}"
-                          .format(config_filename, key))
+                    print("Unrecognized variable in {0}: {1}".format(
+                        config_filename, key))
                     exit(1)
     # Finally, use values from command line (if they are not empty)
     for key, value in commandline_values.items():
