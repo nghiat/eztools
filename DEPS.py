@@ -14,10 +14,10 @@ deps = []
 if _config.is_linux:
     deps.extend([
         {
-            "file_name": "gn-linux-0.3.2.tar.xz",
+            "file_name": "gn-linux.tar.xz",
             "folder": ".",
-            "url": "https://github.com/nghiat/binaries/raw/master/gn/gn-linux-0.3.2.tar.xz",
-            "sha1": "8c1e12d706f1868ebaa523ebea49c88115e4b53a"
+            "url": "https://github.com/nghiat/binaries/raw/master/gn/gn-linux.tar.xz",
+            "sha1": "8d7258cec98b816c15b998e2d1136f1a58256e1b"
         },
         {
             "file_name": "ninja-linux-1.8.2.tar.xz",
@@ -29,10 +29,10 @@ if _config.is_linux:
 elif _config.is_win:
     deps.extend([
         {
-            "file_name": "gn-win-0.3.2.tar.xz",
+            "file_name": "gn-win.tar.xz",
             "folder": ".",
-            "url": "https://github.com/nghiat/binaries/raw/master/gn/gn-win-0.3.2.tar.xz",
-            "sha1": "09305c73377795024ef3d5d02f0019c891b79b6c"
+            "url": "https://github.com/nghiat/binaries/raw/master/gn/gn-win.tar.xz",
+            "sha1": "4de49c4497d5ef202acdf79daa16493c3093bfab"
         },
         {
             "file_name": "ninja-win-1.8.2.tar.xz",
